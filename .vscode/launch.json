@@ -4,7 +4,7 @@
         {
             "name": "Run Gyroflow",
             "request": "launch",
-            "preLaunchTask" : "Build Gyroflow (Release)",
+            "preLaunchTask": "Build Gyroflow (Release)",
             "program": "${workspaceFolder}/target/release/gyroflow",
             "windows": {
                 "environment": [
@@ -23,13 +23,13 @@
                 ],
             },
             "cwd": "${workspaceFolder}",
-            "type":"cppvsdbg",
+            "type": "cppvsdbg",
             "console": "integratedTerminal",
         },
         {
             "name": "Debug Gyroflow",
             "request": "launch",
-            "preLaunchTask" : "Build Gyroflow (Debug)",
+            "preLaunchTask": "Build Gyroflow (Debug)",
             "program": "${workspaceFolder}/target/debug/gyroflow",
             "windows": {
                 "environment": [
@@ -48,15 +48,16 @@
                 ],
             },
             "cwd": "${workspaceFolder}",
-            "type":"cppvsdbg",
+            "type": "cppvsdbg",
             "console": "integratedTerminal",
         },
-        {
+        {            
             "name": "Attach to Gyroflow",
+            "processId": "${command:pickProcess}",
             "type": "cppvsdbg",
             "request": "attach",
-            "processName": "gyroflow.exe",
-            "console": "integratedTerminal",
+            // "processName": "gyroflow.exe",
+            // "console": "integratedTerminal",
         }
     ]
 }
