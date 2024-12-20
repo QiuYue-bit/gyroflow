@@ -174,10 +174,13 @@ impl FrameTransform {
         let gyro = params.gyro.read();
         let file_metadata = gyro.file_metadata.read();
 
+        // only for sony camera now otherwise is none
         let mut mesh_data = Vec::new();
         if let Some(mc) = file_metadata.mesh_correction.get(frame) {
             mesh_data = mc.1.clone(); // undistorting mesh
         }
+
+        // println!("mesh data is {:?}", mesh_data);
 
         // ----------- Rolling shutter correction -----------
         let frame_readout_time = Self::get_frame_readout_time(&params, true, timestamp_ms, &file_metadata);
@@ -207,7 +210,11 @@ impl FrameTransform {
 
         // Only compute 1 matrix if not using rolling shutter correction
         let rows = if frame_readout_time.abs() > 0.0 { if params.frame_readout_direction.is_horizontal() { params.width } else { params.height } } else { 1 };
+        // println!("rows is {}",rows); 2464 个
 
+        
+        // println!("matrices len: {}", matrices.len());
+        // 2464 个
         let matrices = (0..rows).into_par_iter().map(|y| {
             let quat_time = if frame_readout_time.abs() > 0.0 {
                 start_ts + row_readout_time * y as f64
@@ -228,6 +235,7 @@ impl FrameTransform {
                 r[(1, 0)] *= -1.0; r[(2, 0)] *= -1.0;
             }
 
+            // sony IBIS data （In-Body Image Stabilization Data）
             let (mut sx, mut sy, mut ra, mut ox, mut oy) = if let Some(is) = file_metadata.camera_stab_data.get(frame) {
                 // let ts = ((row_readout_time * y as f64 + frame_period * frame as f64) * 1000.0).round() as i64;
                 let y_sensor = map_coord(y as f64, 0.0, params.height as f64, is.crop_area.1 as f64, is.crop_area.1 as f64 + is.crop_area.3 as f64);
@@ -248,6 +256,8 @@ impl FrameTransform {
                 (0.0, 0.0, 0.0, 0.0, 0.0)
             };
 
+            
+            // false
             if params.suppress_rotation {
                 r = Matrix3::identity();
                 if params.frame_readout_time == 0.0 {
@@ -255,11 +265,20 @@ impl FrameTransform {
                 }
             }
 
+            // in my test is all zero
+            // println!("sx: {:.3}, sy: {:.3}, ra: {:.3}, ox: {:.3}, oy: {:.3}", sx, sy, ra, ox, oy);
+
             let i_r = (new_k * r).pseudo_inverse(0.000001);
             if let Err(err) = i_r {
                 log::error!("Failed to multiply matrices: {:?} * {:?}: {}", new_k, r, err);
             }
             let i_r: Matrix3<f32> = nalgebra::convert(i_r.unwrap_or_default());
+            // open rolling shutter and matrix is all zero
+            // println!("i_r[0,0]: {}, i_r[0,1]: {}, i_r[0,2]: {}", i_r[(0, 0)], i_r[(0, 1)], i_r[(0, 2)]);
+            // println!("i_r[1,0]: {}, i_r[1,1]: {}, i_r[1,2]: {}", i_r[(1, 0)], i_r[(1, 1)], i_r[(1, 2)]);
+            // println!("i_r[2,0]: {}, i_r[2,1]: {}, i_r[2,2]: {}", i_r[(2, 0)], i_r[(2, 1)], i_r[(2, 2)]);
+            // println!("sx: {}, sy: {}, ra: {}", sx, sy, ra);
+            // println!("ox: {}, oy: {}", ox, oy);
             [
                 i_r[(0, 0)], i_r[(0, 1)], i_r[(0, 2)],
                 i_r[(1, 0)], i_r[(1, 1)], i_r[(1, 2)],
@@ -271,6 +290,7 @@ impl FrameTransform {
         drop(file_metadata);
         drop(gyro);
 
+       
         let mut digital_lens_params = [0f32; 4];
         if let Some(p) = &params.digital_lens_params {
             for (i, v) in p.iter().enumerate() {
@@ -281,6 +301,36 @@ impl FrameTransform {
             adaptive_zoom_center_y *= -1.0;
         }
 
+        // f is 1451.00459628359
+        // c is 1320.0
+        // k is [-0.0400643899664799, -0.096371854757103, 0.0374004311709585, 0.0029558890905427, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        // fov is 1.4742114288466317
+        // r_limit is 0.0
+        // lens_correction_amount is 1.0
+        // input_vertical_stretch is 1.0
+        // input_horizontal_stretch is 1.0
+        // background_mode is SolidColor
+        // background_margin is 0.0
+        // background_margin_feather is 0.0
+        // translation2d is 0.0
+        // translation3d is [0.0, 0.0, 0.0, 0.0]
+        // digital_lens_params is [0.0, 0.0, 0.0, 0.0]
+        // light_refraction_coefficient is 1.0
+        // println!("f is {:?}", scaled_k[(0, 0)]);
+        // println!("c is {:?}", scaled_k[(0, 2)]);
+        // println!("k is {:?}", distortion_coeffs);
+        // println!("fov is {:?}", fov);
+        // println!("r_limit is {:?}", radial_distortion_limit);
+        // println!("lens_correction_amount is {:?}", lens_correction_amount);
+        // println!("input_vertical_stretch is {:?}", input_vertical_stretch);
+        // println!("input_horizontal_stretch is {:?}", input_horizontal_stretch);
+        // println!("background_mode is {:?}", params.background_mode);
+        // println!("background_margin is {:?}", background_margin);
+        // println!("background_margin_feather is {:?}", background_feather);
+        // println!("translation2d is {:?}", (adaptive_zoom_center_x * params.width as f64 / fov) as f32);
+        // println!("translation3d is {:?}", [0.0, 0.0, 0.0, 0.0]);
+        // println!("digital_lens_params is {:?}", digital_lens_params);
+        // println!("light_refraction_coefficient is {:?}", light_refraction_coefficient);
         let kernel_params = KernelParams {
             matrix_count:  matrices.len() as i32,
             f:             [scaled_k[(0, 0)] as f32, scaled_k[(1, 1)] as f32],

@@ -239,7 +239,9 @@ MenuItem {
         font.pixelSize: 12 * dpiScale;
         width: parent.width;
         currentIndex: 1;
+        // 当前平滑算法索引改变
         Component.onCompleted: currentIndexChanged();
+        // 复选框值改变的时候触发
         onCurrentIndexChanged: {
             // Clear current params
             for (let i = smoothingOptions.children.length; i > 0; --i) {

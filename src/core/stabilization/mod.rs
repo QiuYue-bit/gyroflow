@@ -332,6 +332,7 @@ impl Stabilization {
                 transform.kernel_params.max_pixel_value = 1.0;
                 transform.kernel_params.pixel_value_limit = 1.0;
             }
+            // 如果注释掉这句话就没有任何稳定变换的效果了。
             self.stab_data.insert(timestamp_us, transform);
         }
     }
@@ -616,9 +617,10 @@ impl Stabilization {
             if buffers.input.size.0  as i32 > itm.kernel_params.stride        { return Err(GyroflowCoreError::InvalidStride(itm.kernel_params.stride, buffers.input.size.0 as i32)); }
             if buffers.output.size.0 as i32 > itm.kernel_params.output_stride { return Err(GyroflowCoreError::InvalidStride(itm.kernel_params.output_stride, buffers.output.size.0 as i32)); }
 
+            let not_use_cpu = false;
             // OpenCL path
             #[cfg(feature = "use-opencl")]
-            if !matches!(self.initialized_backend, BackendType::Cpu(_)) && opencl::is_buffer_supported(buffers) {
+            if not_use_cpu && !matches!(self.initialized_backend, BackendType::Cpu(_)) && opencl::is_buffer_supported(buffers) {
                 if self.share_wgpu_instances {
                     let hash = self.get_current_checksum(buffers);
                     let has_cache = CACHED_OPENCL.with(|lru| lru.borrow().contains(&hash));
@@ -649,7 +651,7 @@ impl Stabilization {
             }
 
             // wgpu path
-            if !matches!(self.initialized_backend, BackendType::Cpu(_)) && wgpu::is_buffer_supported(buffers) {
+            if not_use_cpu && !matches!(self.initialized_backend, BackendType::Cpu(_)) && wgpu::is_buffer_supported(buffers) {
                 if self.share_wgpu_instances {
                     let hash = self.get_current_checksum(buffers);
                     let has_any_cache = CACHED_WGPU.with(|x| !x.0.borrow().is_empty());

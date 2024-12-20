@@ -130,7 +130,12 @@ impl Stabilization {
         }
     }
 
+    /// 这个代码实现了 R×bearing 然后调用project得到uv
+    /// 这个 matrices 是R * K^-1，把uv 根据设置好的期望相机内参进行像素的unproj，再根据实际的相机模型进行Proj
+    /// 那么如果要做不同的变换可以把K设置成单位阵，这样就是纯粹的R了，或者就得增加接口。
+    /// 那么实际上这个distort_point也不需要改，因为在这里面这个就是Proj函数
     pub fn rotate_and_distort(pos: (f32, f32), idx: usize, params: &KernelParams, matrices: &[[f32; 14]], distortion_model: &DistortionModel, digital_lens: Option<&DistortionModel>, r_limit_sq: f32, mesh_data: &[f64]) -> Option<(f32, f32)> {
+        /// unproject to 3d bearing and rotate it 
         let matrices = matrices[idx];
         let _x = (pos.0 * matrices[0]) + (pos.1 * matrices[1]) + matrices[2] + params.translation3d[0];
         let _y = (pos.0 * matrices[3]) + (pos.1 * matrices[4]) + matrices[5] + params.translation3d[1];
@@ -151,6 +156,7 @@ impl Stabilization {
                 }
             }
 
+            // 
             let mut uv = distortion_model.distort_point(_x, _y, _w, &params);
             uv = (uv.0 * params.f[0], uv.1 * params.f[1]);
 
@@ -231,6 +237,7 @@ impl Stabilization {
     // https://github.com/opencv/opencv/blob/2b60166e5c65f1caccac11964ad760d847c536e4/modules/calib3d/src/fisheye.cpp#L465-L567
     // https://github.com/opencv/opencv/blob/2b60166e5c65f1caccac11964ad760d847c536e4/modules/imgproc/src/opencl/remap.cl#L390-L498
     pub fn undistort_image_cpu<const I: i32, T: PixelType>(buffers: &mut Buffers, params: &KernelParams, distortion_model: &DistortionModel, digital_lens: Option<&DistortionModel>, matrices: &[[f32; 14]], drawing: &[u8], mesh_data: &[f32]) -> bool {
+        // println!("use cpu to undistort image");
         // #[cold]
         // fn draw_pixel(pix: &mut Vector4<f32>, x: i32, y: i32, is_input: bool, width: i32, params: &KernelParams, drawing: &[u8]) {
         //     if drawing.is_empty() || (params.flags & 8) == 0 { return; }
@@ -250,6 +257,7 @@ impl Stabilization {
         //     }
         // }
 
+        
         // From 0-255(JPEG/Full) to 16-235(MPEG/Limited)
         #[cold]
         fn remap_colorrange(px: &mut Vector4<f32>, is_y: bool) {
@@ -518,6 +526,7 @@ impl Stabilization {
             if let BufferSource::Cpu { buffer: output } = &mut buffers.output.data {
                 let r_limit_sq = params.r_limit * params.r_limit; // Square it so we don't have to do sqrt on the point length
 
+                println!("r_limit_sq is {:?}", r_limit_sq);
                 let bg = Vector4::<f32>::new(params.background[0], params.background[1], params.background[2], params.background[3]) * params.max_pixel_value;
                 let bg_t: T = PixelType::from_float(bg);
 
@@ -540,12 +549,17 @@ impl Stabilization {
 
                 output.par_chunks_mut(buffers.output.size.2).enumerate().for_each(|(y, row_bytes)| { // Parallel iterator over buffer rows
                     row_bytes.chunks_mut(params.bytes_per_pixel as usize).enumerate().for_each(|(x, pix_chunk)| { // iterator over row pixels
-
+                        // println!("x is {:?}", x); 2502
+                        // 这个x 和 y 是输出图像的尺寸
                         let out_pos = (
                             map_coord(x as f32, params.output_rect[0] as f32, (params.output_rect[0] + params.output_rect[2]) as f32, 0.0, params.output_width  as f32),
                             map_coord(y as f32, params.output_rect[1] as f32, (params.output_rect[1] + params.output_rect[3]) as f32, 0.0, params.output_height as f32)
                         );
 
+                        // println!("out_pos x is {:?}", out_pos.0); 1541
+                        // println!("params.output_width is {:?}", params.output_width); 2464
+                        // println!("params.output_height is {:?}", params.output_height); 2464
+                        // println!("params.output_rect is {:?}", params.output_rect); 0 0 4000 4000
                         if out_pos.0 >= 0.0 && out_pos.1 >= 0.0 && (out_pos.0 as i32) < params.output_width && (out_pos.1 as i32) < params.output_height {
 
                             // let p = out_pos;

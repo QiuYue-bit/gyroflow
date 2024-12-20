@@ -513,6 +513,8 @@ impl GyroSource {
         let file_metadata = self.file_metadata.read();
         match self.integration_method {
             0 => {
+                //  如果检测到的源是 GoPro，且四元数不为空，并且没有重力向量或不使用重力向量，则使用加速度计数据进行四元数转换，并记录日志。
+                // 否则: 如果条件不满足，则直接使用 file_metadata 中的四元数数据。
                 self.quaternions = if file_metadata.detected_source.as_deref().unwrap_or("").starts_with("GoPro") && !file_metadata.quaternions.is_empty() && (file_metadata.gravity_vectors.is_none() || !self.use_gravity_vectors) {
                     log::info!("No gravity vectors - using accelerometer");
                     QuaternionConverter::convert(self.horizon_lock_integration_method, &file_metadata.quaternions, file_metadata.image_orientations.as_ref().unwrap_or(&TimeQuat::default()), self.raw_imu(&file_metadata), self.duration_ms)
@@ -556,6 +558,8 @@ impl GyroSource {
             *q *= additional_rotation;
         }
 
+        /// 这里作者试了两个逻辑，如果启用了地平线锁定: 这个对平滑的效果没有影响
+        /// 那么是先锁定地平线，然后进行平滑，还是是先平滑，然后锁定地平线
         if true {
             // Lock horizon, then smooth
             horizon_lock.lock(&mut smoothed_quaternions, &self.quaternions, &file_metadata.gravity_vectors, self.use_gravity_vectors, self.integration_method, compute_params);
@@ -566,8 +570,10 @@ impl GyroSource {
             horizon_lock.lock(&mut smoothed_quaternions, &self.quaternions, &file_metadata.gravity_vectors, self.use_gravity_vectors, self.integration_method, compute_params);
         }
 
+        // get max diff roll pitch yaw
         let max_angles = crate::Smoothing::get_max_angles(&self.quaternions, &smoothed_quaternions, compute_params);
 
+        // 把smoothed quat 转换到和原始四元数diff 的 quat
         for (sq, q) in smoothed_quaternions.iter_mut().zip(self.quaternions.iter()) {
             // rotation quaternion from smooth motion -> raw motion to counteract it
             *sq.1 = sq.1.inverse() * q.1;

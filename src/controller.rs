@@ -893,8 +893,11 @@ impl Controller {
     }
 
     fn set_integration_method(&mut self, index: usize) {
+        // qt 的信号槽标志，与回调机制有关联
         let finished = util::qt_queued_callback(self, |this, _| {
+            // 由于进行了重新积分，需要更新图表
             this.chart_data_changed();
+            // 重新计算稳定后的四元数
             this.request_recompute();
         });
 
@@ -912,6 +915,7 @@ impl Controller {
                 gyro.integration_method = index;
                 gyro.integrate();
             }
+            // 把之前的结果设置为失效。
             stab.invalidate_smoothing();
             finished(());
         });

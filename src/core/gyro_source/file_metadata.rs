@@ -52,8 +52,8 @@ pub struct FileMetadata {
     pub has_accurate_timestamps: bool,
     pub additional_data:     serde_json::Value,
     pub per_frame_time_offsets: Vec<f64>,
-    pub camera_stab_data:    Vec<CameraStabData>,
-    pub mesh_correction:     Vec<(Vec<f64>, Vec<f32>)>,
+    pub camera_stab_data:    Vec<CameraStabData>, /// only for sony camera now
+    pub mesh_correction:     Vec<(Vec<f64>, Vec<f32>)>, // only for sony camera now
 }
 impl FileMetadata {
     pub fn thin(&self) -> Self {

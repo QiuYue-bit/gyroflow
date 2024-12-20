@@ -157,6 +157,7 @@ impl Smoothing {
         }
     }
 
+    /// max_angles 代表了在特定时间范围内，原始四元数与平滑后四元数在俯仰、偏航和滚转三个旋转轴上的最大角度偏差。通过计算这些最大角度差异，开发者可以有效评估和调整平滑算法，
     pub fn get_max_angles(quats: &TimeQuat, smoothed_quats: &TimeQuat, params: &ComputeParams) -> (f64, f64, f64) { // -> (pitch, yaw, roll) in deg
         let ranges = params.trim_ranges.iter().map(|x| ((x.0 * params.scaled_duration_ms * 1000.0) as i64, (x.1 * params.scaled_duration_ms * 1000.0) as i64)).collect::<Vec<_>>();
         let identity_quat = Quat64::identity();
