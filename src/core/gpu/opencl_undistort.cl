@@ -387,9 +387,20 @@ DATA_TYPEF sample_input_at(float2 uv, float4 jac, __global const uchar *srcptr, 
 
 float2 rotate_and_distort(float2 pos, uint idx, __global KernelParams *params, __global const float *matrices, __global const float *mesh_data) {
     __global const float *matrix = &matrices[idx];
-    float _x = (pos.x * matrix[0]) + (pos.y * matrix[1]) + matrix[2] + params->translation3d.x;
-    float _y = (pos.x * matrix[3]) + (pos.y * matrix[4]) + matrix[5] + params->translation3d.y;
-    float _w = (pos.x * matrix[6]) + (pos.y * matrix[7]) + matrix[8] + params->translation3d.z;
+    // float _x = (pos.x * matrix[0]) + (pos.y * matrix[1]) + matrix[2] + params->translation3d.x;
+    // float _y = (pos.x * matrix[3]) + (pos.y * matrix[4]) + matrix[5] + params->translation3d.y;
+    // float _w = (pos.x * matrix[6]) + (pos.y * matrix[7]) + matrix[8] + params->translation3d.z;
+    
+    float phi = -M_PI_F / 2.0f + (pos.x + 0.5f) * M_PI_F / params->width;
+    float theta = -M_PI_F / 2.0f + (pos.y + 0.5f) * M_PI_F / params->height;
+
+    float x = sin(phi) * cos(theta);
+    float y = sin(theta);
+    float z = cos(phi) * cos(theta);
+
+    float _x = x * matrix[0] + y * matrix[1] + z * matrix[2];
+    float _y = x * matrix[3] + y * matrix[4] + z * matrix[5];
+    float _w = x * matrix[6] + y * matrix[7] + z * matrix[8];
     if (_w > 0.0f) {
         if (params->r_limit > 0.0f && length((float2)(_x, _y) / _w) > params->r_limit) {
             return (float2)(-99999.0f, -99999.0f);
