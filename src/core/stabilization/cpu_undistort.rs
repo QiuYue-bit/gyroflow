@@ -144,6 +144,8 @@ impl Stabilization {
         //     let _y = (pos.0 * matrices[3]) + (pos.1 * matrices[4]) + matrices[5] + params.translation3d[1];
         //     let mut _w = (pos.0 * matrices[6]) + (pos.1 * matrices[7]) + matrices[8] + params.translation3d[2];
         // } else {
+            // 在外面那层，如果开启了把输入的 pos 重新映射到了原图的尺寸，所以这边还是用的原图 
+            // param.width = 2640 param.height = 2464
             let phi = -std::f32::consts::PI / 2.0 + (pos.0 + 0.5) * std::f32::consts::PI / params.width as f32;  // phi从-π/2到π/2 方位角
             let theta = -std::f32::consts::PI / 2.0 + (pos.1 + 0.5) * std::f32::consts::PI / params.height as f32; // theta从-π/2到π/2 俯仰角
 
