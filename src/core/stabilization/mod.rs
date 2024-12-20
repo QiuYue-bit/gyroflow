@@ -89,10 +89,10 @@ bitflags::bitflags! {
 pub struct KernelParams {
     pub width:             i32, // 4
     pub height:            i32, // 8
-    pub stride:            i32, // 12
+    pub stride:            i32, // 12 - 输入图像每一行的字节数
     pub output_width:      i32, // 16
     pub output_height:     i32, // 4
-    pub output_stride:     i32, // 8
+    pub output_stride:     i32, // 8  - 输出图像每一行的字节数
     pub matrix_count:      i32, // 12 - for rolling shutter correction. 1 = no correction, only main matrix
     pub interpolation:     i32, // 16
     pub background_mode:   i32, // 4

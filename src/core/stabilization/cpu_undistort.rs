@@ -526,7 +526,7 @@ impl Stabilization {
             if let BufferSource::Cpu { buffer: output } = &mut buffers.output.data {
                 let r_limit_sq = params.r_limit * params.r_limit; // Square it so we don't have to do sqrt on the point length
 
-                println!("r_limit_sq is {:?}", r_limit_sq);
+
                 let bg = Vector4::<f32>::new(params.background[0], params.background[1], params.background[2], params.background[3]) * params.max_pixel_value;
                 let bg_t: T = PixelType::from_float(bg);
 
