@@ -121,9 +121,16 @@ float map_coord(float x, float in_min, float in_max, float out_min, float out_ma
 }
 
 vec2 rotate_and_distort(vec2 pos, float idx) {
-    float _x = (float(pos.x) * get_param(idx, 0)) + (float(pos.y) * get_param(idx, 1)) + get_param(idx, 2) + params.translation3d.x;
-    float _y = (float(pos.x) * get_param(idx, 3)) + (float(pos.y) * get_param(idx, 4)) + get_param(idx, 5) + params.translation3d.y;
-    float _w = (float(pos.x) * get_param(idx, 6)) + (float(pos.y) * get_param(idx, 7)) + get_param(idx, 8) + params.translation3d.z;
+    float phi = -3.14159 / 2.0 + (pos.x + 0.5) * 3.14159 / float(params.width);
+    float theta = -3.14159 / 2.0 + (pos.y + 0.5) * 3.14159 / float(params.height);
+
+    float x = sin(phi) * cos(theta);
+    float y = sin(theta);
+    float z = cos(phi) * cos(theta);
+
+    float _x = x * get_param(idx, 0) + y * get_param(idx, 1) + z * get_param(idx, 2) + params.translation3d.x;
+    float _y = x * get_param(idx, 3) + y * get_param(idx, 4) + z * get_param(idx, 5) + params.translation3d.y; 
+    float _w = x * get_param(idx, 6) + y * get_param(idx, 7) + z * get_param(idx, 8) + params.translation3d.z;
 
     if (_w > 0.0) {
         if (params.r_limit > 0.0 && length(vec2(_x, _y) / _w) > params.r_limit) {
