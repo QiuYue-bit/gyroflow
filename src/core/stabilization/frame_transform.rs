@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright © 2021-2022 Adrian <adrian.eddy at gmail>
 
+use argmin_math::ArgminTranspose;
 use nalgebra::Matrix3;
 use super::{ ComputeParams, KernelParams };
 use rayon::iter::{ ParallelIterator, IntoParallelIterator };
@@ -268,7 +269,8 @@ impl FrameTransform {
             // in my test is all zero
             // println!("sx: {:.3}, sy: {:.3}, ra: {:.3}, ox: {:.3}, oy: {:.3}", sx, sy, ra, ox, oy);
 
-            let i_r = (new_k * r).pseudo_inverse(0.000001);
+            // let i_r = (new_k * r).pseudo_inverse(0.000001);
+            let i_r = r.pseudo_inverse(0.000001);
             if let Err(err) = i_r {
                 log::error!("Failed to multiply matrices: {:?} * {:?}: {}", new_k, r, err);
             }

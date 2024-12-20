@@ -137,9 +137,26 @@ impl Stabilization {
     pub fn rotate_and_distort(pos: (f32, f32), idx: usize, params: &KernelParams, matrices: &[[f32; 14]], distortion_model: &DistortionModel, digital_lens: Option<&DistortionModel>, r_limit_sq: f32, mesh_data: &[f64]) -> Option<(f32, f32)> {
         /// unproject to 3d bearing and rotate it 
         let matrices = matrices[idx];
-        let _x = (pos.0 * matrices[0]) + (pos.1 * matrices[1]) + matrices[2] + params.translation3d[0];
-        let _y = (pos.0 * matrices[3]) + (pos.1 * matrices[4]) + matrices[5] + params.translation3d[1];
-        let mut _w = (pos.0 * matrices[6]) + (pos.1 * matrices[7]) + matrices[8] + params.translation3d[2];
+
+        // let perspective_proj = false;
+        // if perspective_proj {
+        //     let _x = (pos.0 * matrices[0]) + (pos.1 * matrices[1]) + matrices[2] + params.translation3d[0];
+        //     let _y = (pos.0 * matrices[3]) + (pos.1 * matrices[4]) + matrices[5] + params.translation3d[1];
+        //     let mut _w = (pos.0 * matrices[6]) + (pos.1 * matrices[7]) + matrices[8] + params.translation3d[2];
+        // } else {
+            let phi = -std::f32::consts::PI / 2.0 + (pos.0 + 0.5) * std::f32::consts::PI / params.width as f32;  // phi从-π/2到π/2 方位角
+            let theta = -std::f32::consts::PI / 2.0 + (pos.1 + 0.5) * std::f32::consts::PI / params.height as f32; // theta从-π/2到π/2 俯仰角
+
+            let x = phi.sin() * theta.cos();
+            let y = theta.sin(); // y only depends on theta  
+            let z = phi.cos() * theta.cos();
+
+            // 用矩阵前9个元素组成3x3矩阵对3D向量进行变换
+            let _x = x * matrices[0] + y * matrices[1] + z * matrices[2];
+            let _y = x * matrices[3] + y * matrices[4] + z * matrices[5];
+            let mut _w = x * matrices[6] + y * matrices[7] + z * matrices[8];
+        // }
+
         if _w > 0.0 {
             if r_limit_sq > 0.0 && (_x.powi(2) + _y.powi(2)) > r_limit_sq * _w {
                 return None;
@@ -426,12 +443,23 @@ impl Stabilization {
             )
         }
 
+        /// 对调用这个函数的人来说，这个函数的输入是 输出图像的像素坐标 和 防抖相关的变换参数
+        /// 输出是 输出图像像素 对应的原图像素坐标
+        /// 这样就可以算映射了。
         fn undistort_coord(mut out_pos: Vector2<f32>, params: &KernelParams, matrices: &[[f32; 14]], distortion_model: &DistortionModel, digital_lens: Option<&DistortionModel>, r_limit_sq: f32, mesh_data: &[f64], out_c: &Vector2<f32>, out_f: &Vector2<f32>) -> Option<Vector2<f32>> {
-            out_pos.x = map_coord(out_pos.x, params.output_rect[0] as f32, (params.output_rect[0] + params.output_rect[2]) as f32, 0.0, params.output_width  as f32);
-            out_pos.y = map_coord(out_pos.y, params.output_rect[1] as f32, (params.output_rect[1] + params.output_rect[3]) as f32, 0.0, params.output_height as f32);
-            out_pos.x += params.translation2d[0];
-            out_pos.y += params.translation2d[1];
+            // 1080 * 1080 map to 2464 * 2464
+            // as we need origin K to unproj origin code use ir to do this
+            // output_rect = 0 0 1080 1080
+            // output width and height 2464 2464
+            let perspective = true;
+            if perspective{
+                out_pos.x = map_coord(out_pos.x, params.output_rect[0] as f32, (params.output_rect[0] + params.output_rect[2]) as f32, 0.0, params.output_width  as f32);
+                out_pos.y = map_coord(out_pos.y, params.output_rect[1] as f32, (params.output_rect[1] + params.output_rect[3]) as f32, 0.0, params.output_height as f32);
+                out_pos.x += params.translation2d[0];
+                out_pos.y += params.translation2d[1];
+            }
 
+            // 
             ///////////////////////////////////////////////////////////////////
             // Add lens distortion back
             if params.lens_correction_amount < 1.0 {
