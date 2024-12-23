@@ -159,6 +159,24 @@ impl FrameTransform {
             focal_length) = Self::get_lens_data_at_timestamp(params, timestamp_ms, false);
         // ----------- Lens -----------
 
+
+        // ----------- stereo rectify -----------
+        
+        let cam6_rectify_r = Matrix3::new(
+            -0.0246645, 0.996252, -0.0829028,
+            -0.999553, -0.0231765, 0.0188645,
+            0.0168724, 0.083331, 0.996379
+        );
+
+
+        let cam7_rectify_r = Matrix3::new(
+            -0.00616299, 0.993251, 0.115821,
+            -0.999864, -0.00788895, 0.0144495,
+            0.0152657, -0.115716, 0.993165
+        );
+
+        // ----------- stereo rectify -----------
+
         let mut fov = Self::get_fov(params, frame, true, timestamp_ms, false);
         let mut ui_fov = Self::get_fov(params, frame, true, timestamp_ms, true);
         if let Some(adj) = params.lens.optimal_fov {
@@ -227,7 +245,7 @@ impl FrameTransform {
                      * gyro.org_quat_at_timestamp(quat_time);
 
 
-            let mut r = image_rotation * *quat.to_rotation_matrix().matrix();
+            let mut r = image_rotation *cam7_rectify_r* *quat.to_rotation_matrix().matrix();
             if params.framebuffer_inverted {
                 r[(0, 2)] *= -1.0; r[(1, 2)] *= -1.0;
                 r[(2, 0)] *= -1.0; r[(2, 1)] *= -1.0;
