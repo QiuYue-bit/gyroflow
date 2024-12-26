@@ -578,6 +578,28 @@ impl GyroSource {
             // rotation quaternion from smooth motion -> raw motion to counteract it
             *sq.1 = sq.1.inverse() * q.1;
         }
+
+        // let mut first_quat_val = Quat64::identity();
+        // // 获取第一个四元数
+        // if let Some(first_quat) = smoothed_quaternions.iter().next() {
+        //     first_quat_val = first_quat.1.clone();
+        //     // 以第一个四元数为参考,将其设为单位四元数,其他四元数相对于第一个进行变换
+        // }
+        // for (_, q) in smoothed_quaternions.iter_mut() {
+        //     *q = first_quat_val.inverse() * *q;
+        // }
+
+        // // 将smoothed_quaternions保存到文件
+        // use std::fs::OpenOptions;
+        // use std::io::Write;
+        // if let Ok(mut file) = OpenOptions::new()
+        //     .create(true)
+        //     .append(true) 
+        //     .open("smooth_quat.txt") {
+        //         if let Err(e) = writeln!(file, "{:?}", smoothed_quaternions) {
+        //             log::error!("写入smooth_quat失败: {}", e);
+        //         }
+        // }
         (smoothed_quaternions, max_angles)
     }
 
