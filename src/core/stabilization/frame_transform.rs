@@ -319,9 +319,7 @@ impl FrameTransform {
             //     log::error!("Failed to multiply matrices: {:?} * {:?}: {}", new_k, r, err);
             // }
             // let i_r: Matrix3<f32> = nalgebra::convert(i_r.unwrap_or_default());
-            let i_r = Matrix3::new(0.0000340,0.0014455,-1.9125330,
-                -0.0014408,0.0000318,1.9698377,
-                0.0001191,-0.0000285,0.8741498);
+            let i_r = my_k.try_inverse().unwrap_or_default();
             // open rolling shutter and matrix is all zero
             println!("i_r[0,0]: {}, i_r[0,1]: {}, i_r[0,2]: {}", i_r[(0, 0)], i_r[(0, 1)], i_r[(0, 2)]);
             println!("i_r[1,0]: {}, i_r[1,1]: {}, i_r[1,2]: {}", i_r[(1, 0)], i_r[(1, 1)], i_r[(1, 2)]);
