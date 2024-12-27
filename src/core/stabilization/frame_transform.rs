@@ -176,17 +176,26 @@ impl FrameTransform {
         // );
 
         let cam6_rectify_r = Matrix3::new(
-            -0.0235159, 0.996324, -0.0823685,
-            -0.999564, -0.0219627, 0.0197133,
-            0.0178318, 0.0827962, 0.996407
+            0.0235159,-0.9963245,0.0823685,
+            0.9995644,0.0219627,-0.0197133,
+            0.0178318,0.0827962,0.9964070
         );
 
         let cam7_rectify_r = Matrix3::new(
-            -0.00444904, 0.992768, 0.119964,
-            -0.99981, -0.00669333, 0.0183117,
-            0.0189822, -0.119859, 0.992609
+            0.0044490,-0.9927683,-0.1199637,
+            0.9998099,0.0066933,-0.0183117,
+            0.0189822,-0.1198594,0.9926094
         );
         
+        //TODO !! 用cpp工程相同的 r 和 k 看能不能拿到相同的图像，在Beyond compare里面比一下
+        //TODO !! 为什么使用了和cpp工程相同的 r 和 k ，但是结果不一样？
+        let rectify_r = cam6_rectify_r;
+
+        let my_k = Matrix3::new(
+            691.5101131,0.0000000,1338.4662922,
+            0.0000000,691.5101131,1303.9594827,
+            0.0000000,0.0000000,1.0000000);
+
         // ----------- stereo rectify -----------
 
         let mut fov = Self::get_fov(params, frame, true, timestamp_ms, false);
@@ -257,14 +266,15 @@ impl FrameTransform {
                      * gyro.org_quat_at_timestamp(quat_time);
 
 
-            let mut r = image_rotation *cam7_rectify_r* *quat.to_rotation_matrix().matrix();
-            if params.framebuffer_inverted {
-                r[(0, 2)] *= -1.0; r[(1, 2)] *= -1.0;
-                r[(2, 0)] *= -1.0; r[(2, 1)] *= -1.0;
-            } else {
-                r[(0, 1)] *= -1.0; r[(0, 2)] *= -1.0;
-                r[(1, 0)] *= -1.0; r[(2, 0)] *= -1.0;
-            }
+            let mut r = image_rotation *rectify_r;//* *quat.to_rotation_matrix().matrix();
+            // if params.framebuffer_inverted {
+            //     r[(0, 2)] *= -1.0; r[(1, 2)] *= -1.0;
+            //     r[(2, 0)] *= -1.0; r[(2, 1)] *= -1.0;
+            // } else {
+            //     r[(0, 1)] *= -1.0; r[(0, 2)] *= -1.0;
+            //     r[(1, 0)] *= -1.0; r[(2, 0)] *= -1.0;
+            // }
+            // r *= rectify_r;
 
             // sony IBIS data （In-Body Image Stabilization Data）
             let (mut sx, mut sy, mut ra, mut ox, mut oy) = if let Some(is) = file_metadata.camera_stab_data.get(frame) {
@@ -299,18 +309,25 @@ impl FrameTransform {
             // in my test is all zero
             // println!("sx: {:.3}, sy: {:.3}, ra: {:.3}, ox: {:.3}, oy: {:.3}", sx, sy, ra, ox, oy);
 
-            // let i_r = (new_k * r).pseudo_inverse(0.000001);
-            let i_r = r.pseudo_inverse(0.000001);
-            if let Err(err) = i_r {
-                log::error!("Failed to multiply matrices: {:?} * {:?}: {}", new_k, r, err);
-            }
-            let i_r: Matrix3<f32> = nalgebra::convert(i_r.unwrap_or_default());
+            println!("new_k is {:?}", new_k);
+            println!("my k is {:?}", my_k);
+            // let i_r = (new_k * r).pseudo_inverse(0.000001); // flat 3d
+            // let i_r = (my_k * r).pseudo_inverse(0.000001); // flat 3d
+            // let i_r = (my_k * r).try_inverse(); // flat 3d
+            // let i_r = r.pseudo_inverse(0.000001); // vr180
+            // if let Err(err) = i_r {
+            //     log::error!("Failed to multiply matrices: {:?} * {:?}: {}", new_k, r, err);
+            // }
+            // let i_r: Matrix3<f32> = nalgebra::convert(i_r.unwrap_or_default());
+            let i_r = Matrix3::new(0.0000340,0.0014455,-1.9125330,
+                -0.0014408,0.0000318,1.9698377,
+                0.0001191,-0.0000285,0.8741498);
             // open rolling shutter and matrix is all zero
-            // println!("i_r[0,0]: {}, i_r[0,1]: {}, i_r[0,2]: {}", i_r[(0, 0)], i_r[(0, 1)], i_r[(0, 2)]);
-            // println!("i_r[1,0]: {}, i_r[1,1]: {}, i_r[1,2]: {}", i_r[(1, 0)], i_r[(1, 1)], i_r[(1, 2)]);
-            // println!("i_r[2,0]: {}, i_r[2,1]: {}, i_r[2,2]: {}", i_r[(2, 0)], i_r[(2, 1)], i_r[(2, 2)]);
-            // println!("sx: {}, sy: {}, ra: {}", sx, sy, ra);
-            // println!("ox: {}, oy: {}", ox, oy);
+            println!("i_r[0,0]: {}, i_r[0,1]: {}, i_r[0,2]: {}", i_r[(0, 0)], i_r[(0, 1)], i_r[(0, 2)]);
+            println!("i_r[1,0]: {}, i_r[1,1]: {}, i_r[1,2]: {}", i_r[(1, 0)], i_r[(1, 1)], i_r[(1, 2)]);
+            println!("i_r[2,0]: {}, i_r[2,1]: {}, i_r[2,2]: {}", i_r[(2, 0)], i_r[(2, 1)], i_r[(2, 2)]);
+            println!("sx: {}, sy: {}, ra: {}", sx, sy, ra);
+            println!("ox: {}, oy: {}", ox, oy);
             [
                 i_r[(0, 0)], i_r[(0, 1)], i_r[(0, 2)],
                 i_r[(1, 0)], i_r[(1, 1)], i_r[(1, 2)],
