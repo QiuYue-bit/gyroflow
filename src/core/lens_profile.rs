@@ -289,8 +289,13 @@ impl LensProfile {
     }
     pub fn get_camera_matrix(&self, size: (usize, usize), invert_h: bool) -> nalgebra::Matrix3<f64> {
         if self.fisheye_params.camera_matrix.len() == 3 {
-            let mat = self.get_camera_matrix_internal(invert_h).unwrap();
-
+            // let mat = self.get_camera_matrix_internal(invert_h).unwrap();
+            let mut mat = nalgebra::Matrix3::from_rows(&[
+                self.fisheye_params.camera_matrix[0].into(),
+                self.fisheye_params.camera_matrix[1].into(),
+                self.fisheye_params.camera_matrix[2].into()
+            ]);
+            // println!("camera mat is {:?}",mat);
             // TODO: this didn't really work, try to figure it out and re-enable
             // if self.optimal_fov.is_none() && self.num_images > 3 {
             //     self.optimal_fov = Some(self.calculate_optimal_fov(video_size));
@@ -300,6 +305,7 @@ impl LensProfile {
             mat
         } else {
             // Default camera matrix
+            // println!("fisheye_params is {:?}",self.fisheye_params.camera_matrix);
             let mut mat = nalgebra::Matrix3::<f64>::identity();
             mat[(0, 0)] = size.0 as f64 * 0.8;
             mat[(1, 1)] = size.0 as f64 * 0.8;
