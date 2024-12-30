@@ -140,18 +140,18 @@ impl Stabilization {
 
         // let perspective_proj = false;
         // if perspective_proj {
-        //     let _x = (pos.0 * matrices[0]) + (pos.1 * matrices[1]) + matrices[2] + params.translation3d[0];
-        //     let _y = (pos.0 * matrices[3]) + (pos.1 * matrices[4]) + matrices[5] + params.translation3d[1];
-        //     let mut _w = (pos.0 * matrices[6]) + (pos.1 * matrices[7]) + matrices[8] + params.translation3d[2];
+            // let _x = (pos.0 * matrices[0]) + (pos.1 * matrices[1]) + matrices[2] + params.translation3d[0];
+            // let _y = (pos.0 * matrices[3]) + (pos.1 * matrices[4]) + matrices[5] + params.translation3d[1];
+            // let mut _w = (pos.0 * matrices[6]) + (pos.1 * matrices[7]) + matrices[8] + params.translation3d[2];
         // } else {
             // 另外一种实现思路是把外面的映射关掉，用下面的代码，其实是一样的
-            // let phi = -std::f32::consts::PI / 2.0 + (pos.0 + 0.5) * std::f32::consts::PI / (params.output_rect[0] + params.output_rect[2]) as f32;  // phi从-π/2到π/2 方位角
-            // let theta = -std::f32::consts::PI / 2.0 + (pos.1 + 0.5) * std::f32::consts::PI / (params.output_rect[1] + params.output_rect[3]) as f32; // theta从-π/2到π/2 俯仰角
+            let phi = -std::f32::consts::PI / 2.0 + (pos.0 + 0.5) * std::f32::consts::PI / (params.output_rect[0] + params.output_rect[2]) as f32;  // phi从-π/2到π/2 方位角
+            let theta = -std::f32::consts::PI / 2.0 + (pos.1 + 0.5) * std::f32::consts::PI / (params.output_rect[1] + params.output_rect[3]) as f32; // theta从-π/2到π/2 俯仰角
             
             // 在外面那层，如果开启了把输入的 pos 重新映射到了原图的尺寸，所以这边还是用的原图 
             // param.width = 2640 param.height = 2464
-            let phi = -std::f32::consts::PI / 2.0 + (pos.0 + 0.5) * std::f32::consts::PI / params.width as f32;  // phi从-π/2到π/2 方位角
-            let theta = -std::f32::consts::PI / 2.0 + (pos.1 + 0.5) * std::f32::consts::PI / params.height as f32; // theta从-π/2到π/2 俯仰角
+            // let phi = -std::f32::consts::PI / 2.0 + (pos.0 + 0.5) * std::f32::consts::PI / params.width as f32;  // phi从-π/2到π/2 方位角
+            // let theta = -std::f32::consts::PI / 2.0 + (pos.1 + 0.5) * std::f32::consts::PI / params.height as f32; // theta从-π/2到π/2 俯仰角
 
             let x = phi.sin() * theta.cos();
             let y = theta.sin(); // y only depends on theta  
@@ -454,10 +454,11 @@ impl Stabilization {
         /// 这样就可以算映射了。
         fn undistort_coord(mut out_pos: Vector2<f32>, params: &KernelParams, matrices: &[[f32; 14]], distortion_model: &DistortionModel, digital_lens: Option<&DistortionModel>, r_limit_sq: f32, mesh_data: &[f64], out_c: &Vector2<f32>, out_f: &Vector2<f32>) -> Option<Vector2<f32>> {
             // 1080 * 1080 map to 2464 * 2464
-            // as we need origin K to unproj origin code use ir to do this
+
             // output_rect = 0 0 1080 1080
             // output width and height 2464 2464
-            let perspective = true;
+            let perspective = false;
+            // TODO ?? 为什么关掉这个开关，图像的结果错了，但是有了颜色？
             if perspective{
                 out_pos.x = map_coord(out_pos.x, params.output_rect[0] as f32, (params.output_rect[0] + params.output_rect[2]) as f32, 0.0, params.output_width  as f32);
                 out_pos.y = map_coord(out_pos.y, params.output_rect[1] as f32, (params.output_rect[1] + params.output_rect[3]) as f32, 0.0, params.output_height as f32);
@@ -547,6 +548,7 @@ impl Stabilization {
                 if ry > height3 { uv.1 = height3 - (ry - height3); }
                 if ry < 3.0     { uv.1 = 3.0 + height_f - (height3 + ry); }
             }
+            // background_mode = 0
             if params.background_mode != 3 {
                 uv = (
                     map_coord(uv.0, 0.0, frame_size.0, params.source_rect[0] as f32, (params.source_rect[0] + params.source_rect[2]) as f32),
@@ -565,8 +567,9 @@ impl Stabilization {
                 let bg_t: T = PixelType::from_float(bg);
 
                 let factor = (1.0 - params.lens_correction_amount).max(0.001); // FIXME: this is close but wrong
-                let out_c = Vector2::new(params.output_width as f32 / 2.0, params.output_height as f32 / 2.0);
-                let out_f = Vector2::new(params.f[0] / params.fov / factor, params.f[1] / params.fov / factor);
+                // TODO what's this?
+                let out_c = Vector2::new(params.c[0], params.c[1]);
+                let out_f = Vector2::new(params.f[0], params.f[1]);
 
                 // let drawing_enabled = !drawing.is_empty() && (params.flags & 8) == 8;
                 let fill_bg = (params.flags & 4) == 4;
@@ -585,17 +588,18 @@ impl Stabilization {
                     row_bytes.chunks_mut(params.bytes_per_pixel as usize).enumerate().for_each(|(x, pix_chunk)| { // iterator over row pixels
                         // println!("x is {:?}", x); 2502
                         // 这个x 和 y 是输出图像的尺寸
-                        let out_pos = (
-                            map_coord(x as f32, params.output_rect[0] as f32, (params.output_rect[0] + params.output_rect[2]) as f32, 0.0, params.output_width  as f32),
-                            map_coord(y as f32, params.output_rect[1] as f32, (params.output_rect[1] + params.output_rect[3]) as f32, 0.0, params.output_height as f32)
-                        );
+                       let out_pos = (x as f32,y as f32);
+                        // let out_pos = (
+                        //     map_coord(x as f32, params.output_rect[0] as f32, (params.output_rect[0] + params.output_rect[2]) as f32, 0.0, params.output_width  as f32),
+                        //     map_coord(y as f32, params.output_rect[1] as f32, (params.output_rect[1] + params.output_rect[3]) as f32, 0.0, params.output_height as f32)
+                        // );
 
                         // println!("out_pos x is {:?}", out_pos.0); 1541
                         // println!("params.output_width is {:?}", params.output_width); 2464
                         // println!("params.output_height is {:?}", params.output_height); 2464
                         // println!("params.output_rect is {:?}", params.output_rect); 0 0 4000 4000
-                        if out_pos.0 >= 0.0 && out_pos.1 >= 0.0 && (out_pos.0 as i32) < params.output_width && (out_pos.1 as i32) < params.output_height {
-
+                        // if out_pos.0 >= 0.0 && out_pos.1 >= 0.0 && (out_pos.0 as i32) < params.output_width && (out_pos.1 as i32) < params.output_height {
+                        if true{
                             // let p = out_pos;
                             let mut pixel = bg;
 
@@ -619,6 +623,7 @@ impl Stabilization {
 
                                 let width_f = params.width as f32;
                                 let height_f = params.height as f32;
+                                // params.background_mode = 0
                                 if params.background_mode == 3 { // Margin with feather
                                     let widthf  = width_f - 1.0;
                                     let heightf = height_f - 1.0;
@@ -636,6 +641,7 @@ impl Stabilization {
                                     }
 
                                     let mut frame_size = (params.width as f32, params.height as f32);
+
                                     if params.input_rotation != 0.0 {
                                         let rotation = params.input_rotation * (std::f32::consts::PI / 180.0);
                                         let size = frame_size;

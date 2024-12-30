@@ -176,25 +176,28 @@ impl FrameTransform {
         // );
 
         let cam6_rectify_r = Matrix3::new(
-            0.0235159,-0.9963245,0.0823685,
-            0.9995644,0.0219627,-0.0197133,
+            -0.0235159,0.9963245,-0.0823685,
+            -0.9995644,-0.0219627,0.0197133,
             0.0178318,0.0827962,0.9964070
         );
 
         let cam7_rectify_r = Matrix3::new(
-            0.0044490,-0.9927683,-0.1199637,
-            0.9998099,0.0066933,-0.0183117,
+            -0.0044490,0.9927683,0.1199637,
+            -0.9998099,-0.0066933,0.0183117,
             0.0189822,-0.1198594,0.9926094
         );
         
-        //TODO !! 用cpp工程相同的 r 和 k 看能不能拿到相同的图像，在Beyond compare里面比一下
-        //TODO !! 为什么使用了和cpp工程相同的 r 和 k ，但是结果不一样？
+
         let rectify_r = cam6_rectify_r;
 
         let my_k = Matrix3::new(
-            691.5101131,0.0000000,1338.4662922,
-            0.0000000,691.5101131,1303.9594827,
-            0.0000000,0.0000000,1.0000000);
+            1.0, 0.0, 0.0,
+            0.0, 1.0, 0.0, 
+            0.0, 0.0, 1.0);
+        //  Matrix3::new(
+        //     280.6453381,0.0000000,493.0051924,
+        //     0.0000000,280.6453381,470.7956645,
+        //     0.0000000,0.0000000,1.0000000);
 
         // ----------- stereo rectify -----------
 
@@ -274,7 +277,6 @@ impl FrameTransform {
             //     r[(0, 1)] *= -1.0; r[(0, 2)] *= -1.0;
             //     r[(1, 0)] *= -1.0; r[(2, 0)] *= -1.0;
             // }
-            // r *= rectify_r;
 
             // sony IBIS data （In-Body Image Stabilization Data）
             let (mut sx, mut sy, mut ra, mut ox, mut oy) = if let Some(is) = file_metadata.camera_stab_data.get(frame) {
@@ -309,23 +311,21 @@ impl FrameTransform {
             // in my test is all zero
             // println!("sx: {:.3}, sy: {:.3}, ra: {:.3}, ox: {:.3}, oy: {:.3}", sx, sy, ra, ox, oy);
 
-            println!("new_k is {:?}", new_k);
-            println!("my k is {:?}", my_k);
+
             // let i_r = (new_k * r).pseudo_inverse(0.000001); // flat 3d
-            // let i_r = (my_k * r).pseudo_inverse(0.000001); // flat 3d
+            let i_r = (my_k * r).pseudo_inverse(0.000001); // flat 3d
             // let i_r = (my_k * r).try_inverse(); // flat 3d
             // let i_r = r.pseudo_inverse(0.000001); // vr180
-            // if let Err(err) = i_r {
-            //     log::error!("Failed to multiply matrices: {:?} * {:?}: {}", new_k, r, err);
-            // }
-            // let i_r: Matrix3<f32> = nalgebra::convert(i_r.unwrap_or_default());
-            let i_r = my_k.try_inverse().unwrap_or_default();
+            if let Err(err) = i_r {
+                log::error!("Failed to multiply matrices: {:?} * {:?}: {}", new_k, r, err);
+            }
+            let i_r: Matrix3<f32> = nalgebra::convert(i_r.unwrap_or_default());
             // open rolling shutter and matrix is all zero
-            println!("i_r[0,0]: {}, i_r[0,1]: {}, i_r[0,2]: {}", i_r[(0, 0)], i_r[(0, 1)], i_r[(0, 2)]);
-            println!("i_r[1,0]: {}, i_r[1,1]: {}, i_r[1,2]: {}", i_r[(1, 0)], i_r[(1, 1)], i_r[(1, 2)]);
-            println!("i_r[2,0]: {}, i_r[2,1]: {}, i_r[2,2]: {}", i_r[(2, 0)], i_r[(2, 1)], i_r[(2, 2)]);
-            println!("sx: {}, sy: {}, ra: {}", sx, sy, ra);
-            println!("ox: {}, oy: {}", ox, oy);
+            // println!("i_r[0,0]: {}, i_r[0,1]: {}, i_r[0,2]: {}", i_r[(0, 0)], i_r[(0, 1)], i_r[(0, 2)]);
+            // println!("i_r[1,0]: {}, i_r[1,1]: {}, i_r[1,2]: {}", i_r[(1, 0)], i_r[(1, 1)], i_r[(1, 2)]);
+            // println!("i_r[2,0]: {}, i_r[2,1]: {}, i_r[2,2]: {}", i_r[(2, 0)], i_r[(2, 1)], i_r[(2, 2)]);
+            // println!("sx: {}, sy: {}, ra: {}", sx, sy, ra);
+            // println!("ox: {}, oy: {}", ox, oy);
             [
                 i_r[(0, 0)], i_r[(0, 1)], i_r[(0, 2)],
                 i_r[(1, 0)], i_r[(1, 1)], i_r[(1, 2)],
