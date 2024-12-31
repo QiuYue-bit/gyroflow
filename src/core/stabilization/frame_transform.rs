@@ -188,7 +188,11 @@ impl FrameTransform {
         );
         
 
-        let rectify_r = cam7_rectify_r;
+        let mut rectify_r = cam7_rectify_r;
+        // 适配gyroflow中的坐标系
+        rectify_r[(0, 1)] *= -1.0; rectify_r[(0, 2)] *= -1.0;
+        rectify_r[(1, 0)] *= -1.0; rectify_r[(2, 0)] *= -1.0;
+
 
         // for vr 180 identity
         let my_k = Matrix3::new(
@@ -270,14 +274,16 @@ impl FrameTransform {
                      * gyro.org_quat_at_timestamp(quat_time);
 
 
-            let mut r = image_rotation *rectify_r;//* *quat.to_rotation_matrix().matrix();
-            // if params.framebuffer_inverted {
-            //     r[(0, 2)] *= -1.0; r[(1, 2)] *= -1.0;
-            //     r[(2, 0)] *= -1.0; r[(2, 1)] *= -1.0;
-            // } else {
-            //     r[(0, 1)] *= -1.0; r[(0, 2)] *= -1.0;
-            //     r[(1, 0)] *= -1.0; r[(2, 0)] *= -1.0;
-            // }
+            let mut r = image_rotation * rectify_r  * *quat.to_rotation_matrix().matrix();
+            // 0
+            if params.framebuffer_inverted {
+                r[(0, 2)] *= -1.0; r[(1, 2)] *= -1.0;
+                r[(2, 0)] *= -1.0; r[(2, 1)] *= -1.0;
+            } else {
+                r[(0, 1)] *= -1.0; r[(0, 2)] *= -1.0;
+                r[(1, 0)] *= -1.0; r[(2, 0)] *= -1.0;
+            }
+            // r*=rectify_r;
 
             // sony IBIS data （In-Body Image Stabilization Data）
             let (mut sx, mut sy, mut ra, mut ox, mut oy) = if let Some(is) = file_metadata.camera_stab_data.get(frame) {
