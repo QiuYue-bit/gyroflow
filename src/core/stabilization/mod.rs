@@ -617,7 +617,7 @@ impl Stabilization {
             if buffers.input.size.0  as i32 > itm.kernel_params.stride        { return Err(GyroflowCoreError::InvalidStride(itm.kernel_params.stride, buffers.input.size.0 as i32)); }
             if buffers.output.size.0 as i32 > itm.kernel_params.output_stride { return Err(GyroflowCoreError::InvalidStride(itm.kernel_params.output_stride, buffers.output.size.0 as i32)); }
 
-            let not_use_cpu = false;
+            let not_use_cpu = true;
             // OpenCL path
             #[cfg(feature = "use-opencl")]
             if not_use_cpu && !matches!(self.initialized_backend, BackendType::Cpu(_)) && opencl::is_buffer_supported(buffers) {
