@@ -188,8 +188,9 @@ impl FrameTransform {
         );
         
 
-        let rectify_r = cam6_rectify_r;
+        let rectify_r = cam7_rectify_r;
 
+        // for vr 180 identity
         let my_k = Matrix3::new(
             1.0, 0.0, 0.0,
             0.0, 1.0, 0.0, 
